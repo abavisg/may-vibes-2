@@ -1,0 +1,27 @@
+fastapi
+uvicorn[standard]
+itsdangerous # For SessionMiddleware secret key
+
+# API Clients
+google-api-python-client
+google-auth-oauthlib
+google-auth-httplib2
+notion-client
+
+# Database
+sqlalchemy
+psycopg2-binary # Or asyncpg for async
+
+# Scheduling
+apscheduler
+pytz # Add pytz for timezone handling
+
+# Email
+# Choose one based on implementation (e.g., aiosmtplib for async SMTP)
+# google-api-python-client (if using Gmail API)
+
+# Configuration
+python-dotenv
+
+# Optional: For type checking
+mypy 
