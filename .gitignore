@@ -1,4 +1,4 @@
-personal-ai-organiser/.env
+personal-ai-organiser/backend/.env
 personal-ai-organiser/backend/token.json
 personal-ai-organiser/backend/credentials.json
 .DS_Store
