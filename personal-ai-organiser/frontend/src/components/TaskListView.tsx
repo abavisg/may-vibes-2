@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { PlanItem } from '../context/AuthContext'; // Import PlanItem type
+import apiClient from '../context/apiClient';
 
 // TODO: Fetch and display tasks from Notion
 
 const TaskListView: React.FC = () => {
-  const { fetchDashboardData, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [tasks, setTasks] = useState<PlanItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -17,30 +18,32 @@ const TaskListView: React.FC = () => {
       setIsLoading(true);
       setError(null);
       try {
-        const data = await fetchDashboardData();
-        if (data && data.plan) {
-          // Filter only tasks from the plan
-          setTasks(data.plan.filter(item => item.type === 'task'));
+        // Fetch tasks directly from the Notion endpoint
+        const response = await apiClient.get('/notion/tasks');
+        if (response.data && response.data.tasks) {
+          console.log(`Loaded ${response.data.tasks.length} Notion tasks directly from API`);
+          setTasks(response.data.tasks);
         } else {
+          console.log("No Notion tasks available");
           setTasks([]);
         }
       } catch (err) {
-        console.error("Failed to load tasks:", err);
-        setError("Failed to load tasks.");
+        console.error("Failed to load Notion tasks:", err);
+        setError("Failed to load Notion tasks.");
       } finally {
         setIsLoading(false);
       }
     };
 
     loadData();
-  }, [isAuthenticated, fetchDashboardData]);
+  }, [isAuthenticated]);
 
   return (
     <div>
       {isLoading && <p className="text-gray-600 dark:text-gray-400">Loading tasks...</p>}
       {error && <p className="text-red-500">{error}</p>}
       {!isLoading && !error && tasks.length === 0 && (
-        <p className="text-gray-600 dark:text-gray-400">No tasks found in the plan.</p>
+        <p className="text-gray-600 dark:text-gray-400">No tasks found in Notion.</p>
       )}
       {!isLoading && !error && tasks.length > 0 && (
         <ul className="space-y-2">

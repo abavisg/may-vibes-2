@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { PlanItem } from '../context/AuthContext'; // Import PlanItem type
+import apiClient from '../context/apiClient';
 
 // TODO: Fetch and display Google Calendar events
 
 const CalendarView: React.FC = () => {
-  const { fetchDashboardData, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [events, setEvents] = useState<PlanItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -17,12 +18,14 @@ const CalendarView: React.FC = () => {
       setIsLoading(true);
       setError(null);
       try {
-        const data = await fetchDashboardData();
-        if (data && data.plan) {
-          // Filter only events from the plan
-          setEvents(data.plan.filter(item => item.type === 'event'));
+        // Fetch events directly from the Google Calendar endpoint
+        const response = await apiClient.get('/calendar/events');
+        if (response.data && response.data.events) {
+          console.log(`Loaded ${response.data.events.length} calendar events directly from API`);
+          setEvents(response.data.events);
         } else {
-             setEvents([]); // Set empty if no plan data
+          console.log("No calendar events available");
+          setEvents([]); // Set empty if no events data
         }
       } catch (err) {
         console.error("Failed to load calendar events:", err);
@@ -33,7 +36,7 @@ const CalendarView: React.FC = () => {
     };
 
     loadData();
-  }, [isAuthenticated, fetchDashboardData]); // Re-run if auth state changes
+  }, [isAuthenticated]); // Re-run if auth state changes
 
   const formatTime = (isoString: string | null): string => {
       if (!isoString) return "Time N/A";

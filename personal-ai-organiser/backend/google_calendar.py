@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 import logging
 import pytz
 
+import google.auth.transport.requests
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
@@ -30,138 +31,94 @@ SCOPES = [
 ]
 
 
-def get_calendar_credentials(user_id: int, db: Session) -> Credentials | None:
-    """Gets valid Google Calendar API credentials for a specific user from the database.
-
-    Loads token from DB, reconstructs Credentials object, and refreshes if necessary,
-    saving the updated token back to the DB.
-    Returns None if no token is found or refresh fails.
-    """
-    if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
-        logger.error("Google Client ID or Secret not configured. Cannot refresh tokens.")
-        return None
-
+async def get_calendar_credentials(user_id: int, db: Session) -> Credentials | None:
+    """Gets valid Google Calendar credentials for a user, refreshing if needed."""
     logger.info(f"Attempting to retrieve OAuth token for user_id: {user_id}")
+    
+    # Get token from database
     token_info = db.query(OAuthToken).filter(OAuthToken.user_id == user_id).first()
-
     if not token_info:
-        logger.warning(f"No OAuth token found in database for user_id: {user_id}")
+        logger.warning(f"No OAuth token found for user_id {user_id}")
         return None
 
-    # Reconstruct the Credentials object from stored info
-    try:
-        # Ensure expires_at from DB is timezone-aware UTC
-        db_expiry = token_info.expires_at
-        aware_expiry_dt_utc = None
-        logger.info(f"[DEBUG][Load] DB Expiry Raw (User {user_id}): {db_expiry}, Type: {type(db_expiry)}, TZInfo: {getattr(db_expiry, 'tzinfo', 'N/A')}")
-        if db_expiry:
-            if isinstance(db_expiry, datetime):
-                 if db_expiry.tzinfo is None:
-                      aware_expiry_dt_utc = pytz.utc.localize(db_expiry)
-                 else:
-                      aware_expiry_dt_utc = db_expiry.astimezone(pytz.utc)
-            else:
-                 # Handle case where it might not be a datetime object (though it should be)
-                 logger.error(f"DB expiry for user {user_id} was not a datetime object: {type(db_expiry)}")
-                 # Potentially return None or raise error
-        logger.info(f"[DEBUG][Load] Prepared Expiry for Credentials (User {user_id}): {aware_expiry_dt_utc}, Type: {type(aware_expiry_dt_utc)}, TZInfo: {getattr(aware_expiry_dt_utc, 'tzinfo', 'N/A')}")
+    # Convert expiry to aware UTC datetime for comparison
+    if token_info.expires_at.tzinfo is None:
+        # If naive, assume UTC
+        expiry_dt = pytz.utc.localize(token_info.expires_at)
+        logger.warning(f"Token expiry was naive ({token_info.expires_at}), assuming UTC.")
+    else:
+        # Convert any timezone to UTC
+        expiry_dt = token_info.expires_at.astimezone(pytz.utc)
+    
+    # <<< Add Logging >>>
+    logger.info(f"[DEBUG][Load] DB Expiry Raw (User {user_id}): {token_info.expires_at}, Type: {type(token_info.expires_at)}, TZInfo: {getattr(token_info.expires_at, 'tzinfo', 'N/A')}")
+    logger.info(f"[DEBUG][Load] Prepared Expiry for Credentials (User {user_id}): {expiry_dt}, Type: {type(expiry_dt)}, TZInfo: {getattr(expiry_dt, 'tzinfo', 'N/A')}")
+    # <<< End Logging >>>
 
-        # --- Manual Expiry Check --- 
-        is_expired = False
-        if aware_expiry_dt_utc:
-             now_utc = datetime.now(pytz.utc)
-             # Check if expiry is in the past (adding a small buffer)
-             buffer = timedelta(seconds=60)
-             if now_utc >= (aware_expiry_dt_utc - buffer):
-                 is_expired = True
-                 logger.info(f"[ManualCheck] Token for user {user_id} appears expired (Expiry: {aware_expiry_dt_utc}, Now: {now_utc}).")
-             else:
-                 logger.info(f"[ManualCheck] Token for user {user_id} is not expired.")
-        else:
-             # No expiry time usually means it's invalid or needs refresh if possible
-             logger.warning(f"[ManualCheck] Token for user {user_id} has no expiry date.")
-             # Consider it potentially expired if no expiry is set, rely on refresh token presence
-             is_expired = True 
-        # --- End Manual Expiry Check ---
+    # Manual expiry check with buffer
+    now = datetime.now(pytz.utc)
+    buffer = timedelta(minutes=5)  # 5-minute buffer
+    is_expired = expiry_dt <= (now + buffer)
+    
+    logger.info(f"[ManualCheck] Token for user {user_id} {'appears expired' if is_expired else 'is still valid'} (Expiry: {expiry_dt}, Now: {now}).")
 
-        # --- Refresh Logic (if needed) ---
-        current_access_token = token_info.access_token
-        current_refresh_token = token_info.refresh_token
-        current_scopes = token_info.scope.split() if token_info.scope else SCOPES
-        refreshed_successfully = False
-
-        if is_expired:
-            if current_refresh_token:
-                 logger.info(f"Attempting credential refresh for user_id {user_id}...")
-                 # Create a temporary creds object just for refresh
-                 temp_creds = Credentials(None, refresh_token=current_refresh_token, token_uri="https://oauth2.googleapis.com/token", client_id=GOOGLE_CLIENT_ID, client_secret=GOOGLE_CLIENT_SECRET)
-                 try:
-                     temp_creds.refresh(Request())
-                     # Update variables with refreshed data
-                     current_access_token = temp_creds.token
-                     if temp_creds.expiry:
-                         if temp_creds.expiry.tzinfo is None:
-                             aware_expiry_dt_utc = pytz.utc.localize(temp_creds.expiry)
-                         else:
-                             aware_expiry_dt_utc = temp_creds.expiry.astimezone(pytz.utc)
-                     else:
-                         aware_expiry_dt_utc = None # No expiry after refresh?
-                     # Note: Refresh token usually stays the same, Google might revoke it.
-                     # temp_creds.refresh_token might be None after refresh.
-                     # Keep the one we originally had unless logic dictates otherwise.
-                     current_scopes = temp_creds.scopes
-                     refreshed_successfully = True
-                     logger.info(f"Credentials refreshed successfully for user_id: {user_id}")
-
-                     # --- Update DB with refreshed token --- 
-                     token_info.access_token = current_access_token
-                     token_info.expires_at = aware_expiry_dt_utc
-                     token_info.scope = " ".join(current_scopes)
-                     token_info.updated_at = datetime.now(pytz.utc)
-                     try:
-                         db.commit()
-                         logger.info(f"Updated refreshed token in DB for user_id: {user_id}")
-                     except Exception as db_err:
-                          logger.error(f"DB Error updating refreshed token for user_id {user_id}: {db_err}", exc_info=True)
-                          db.rollback()
-                          # Fail if DB update fails after successful refresh?
-                          # return None 
-                 except Exception as refresh_err:
-                      logger.error(f"Failed to refresh credentials for user_id {user_id}: {refresh_err}", exc_info=True)
-                      return None # Refresh failed
-            else:
-                 logger.warning(f"Credentials expired for user_id {user_id}, but no refresh token available.")
-                 return None # Cannot proceed
-
-        # --- Create Final Credentials Object --- 
-        # Use potentially updated values after successful refresh
-        # Convert aware datetime to naive for the Credentials object to avoid comparison issues
-        naive_expiry = None
-        if aware_expiry_dt_utc:
-            naive_expiry = aware_expiry_dt_utc.replace(tzinfo=None)
-            logger.info(f"Using naive expiry datetime for Credentials: {naive_expiry}")
-        
-        final_creds = Credentials(
-            token=current_access_token,
-            refresh_token=current_refresh_token, # Keep original refresh token
-            token_uri="https://oauth2.googleapis.com/token",
-            client_id=GOOGLE_CLIENT_ID,
-            client_secret=GOOGLE_CLIENT_SECRET,
-            scopes=current_scopes,
-            expiry=naive_expiry  # Use naive datetime to avoid comparison issues
-        )
-        logger.info(f"Final Credentials object ready for user_id: {user_id}")
-        return final_creds
-
-    except Exception as e:
-        logger.error(f"Failed to process credentials object for user_id {user_id}: {e}", exc_info=True)
+    if is_expired and token_info.refresh_token:
+        logger.info(f"Attempting credential refresh for user_id {user_id}...")
+        try:
+            # Create credentials object for refresh
+            creds = Credentials(
+                token=token_info.access_token,
+                refresh_token=token_info.refresh_token,
+                token_uri="https://oauth2.googleapis.com/token",
+                client_id=GOOGLE_CLIENT_ID,
+                client_secret=GOOGLE_CLIENT_SECRET,
+                scopes=token_info.scope.split() if token_info.scope else SCOPES  # Split existing scope or use default
+            )
+            
+            # Refresh the credentials
+            creds.refresh(google.auth.transport.requests.Request())
+            
+            # Update token info in database
+            token_info.access_token = creds.token
+            token_info.expires_at = creds.expiry
+            # Only update refresh token if a new one was provided
+            if creds.refresh_token:
+                token_info.refresh_token = creds.refresh_token
+            # Ensure scope is stored as a space-separated string
+            token_info.scope = " ".join(creds.scopes) if isinstance(creds.scopes, (list, tuple)) else creds.scopes
+            token_info.updated_at = datetime.now(pytz.utc)
+            
+            db.commit()
+            logger.info(f"Credentials refreshed successfully for user_id: {user_id}")
+            
+            # Return the refreshed credentials
+            return creds
+            
+        except Exception as e:
+            logger.error(f"Failed to refresh credentials for user_id {user_id}: {str(e)}", exc_info=True)
+            db.rollback()
+            return None
+    elif is_expired:
+        logger.warning(f"Token expired for user_id {user_id} but no refresh token available")
         return None
+    
+    # If not expired, create and return credentials
+    return Credentials(
+        token=token_info.access_token,
+        refresh_token=token_info.refresh_token,
+        token_uri="https://oauth2.googleapis.com/token",
+        client_id=GOOGLE_CLIENT_ID,
+        client_secret=GOOGLE_CLIENT_SECRET,
+        scopes=token_info.scope.split() if token_info.scope else SCOPES  # Split existing scope or use default
+    )
 
 
 async def get_calendar_events(user_id: int, db: Session) -> list:
     """Fetches today's events from the specific user's primary Google Calendar."""
     logger.info(f"Fetching calendar events for user_id: {user_id}")
-    creds = get_calendar_credentials(user_id=user_id, db=db)
+    
+    # Properly await the coroutine
+    creds = await get_calendar_credentials(user_id=user_id, db=db)
 
     if not creds:
         logger.warning(f"Could not obtain valid credentials for user_id {user_id}. Cannot fetch calendar events.")

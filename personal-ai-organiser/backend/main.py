@@ -394,6 +394,80 @@ async def trigger_generate_plan_manually(
     logger.info(f"Manual plan generation successful for user {current_user.id}.")
     return {"message": "Plan generated successfully", "plan": plan}
 
+@app.get("/notion/tasks")
+async def get_notion_tasks_endpoint(current_user: User = Depends(require_current_user)):
+    """Fetches tasks from Notion for the current user."""
+    logger.info(f"Fetching Notion tasks for user {current_user.id}")
+    
+    try:
+        from .notion import get_notion_tasks
+        tasks = await get_notion_tasks()
+        
+        if tasks is None:
+            logger.error(f"Failed to fetch Notion tasks for user {current_user.id}")
+            raise HTTPException(status_code=500, detail="Failed to fetch Notion tasks")
+        
+        # Format tasks for the frontend
+        formatted_tasks = []
+        for task in tasks:
+            formatted_task = {
+                "id": task["id"],
+                "type": "task",
+                "title": task["title"],
+                "priority": task["priority"],
+                "estimate_hours": task["estimate_hours"],
+                "deadline": task["deadline"],
+                "url": task["url"],
+                "start": None,  # Tasks don't have a start time by default
+                "end": None     # Tasks don't have an end time by default
+            }
+            formatted_tasks.append(formatted_task)
+        
+        logger.info(f"Returning {len(formatted_tasks)} Notion tasks for user {current_user.id}")
+        return {
+            "message": "Successfully retrieved Notion tasks.",
+            "tasks": formatted_tasks
+        }
+    
+    except Exception as e:
+        logger.error(f"Error fetching Notion tasks for user {current_user.id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error fetching Notion tasks: {str(e)}")
+
+@app.get("/calendar/events")
+async def get_calendar_events_endpoint(current_user: User = Depends(require_current_user), db: Session = Depends(get_db)):
+    """Fetches today's events from the user's Google Calendar."""
+    logger.info(f"Fetching calendar events for user {current_user.id}")
+    
+    try:
+        from .google_calendar import get_calendar_events
+        events = await get_calendar_events(user_id=current_user.id, db=db)
+        
+        if events is None:
+            logger.error(f"Failed to fetch calendar events for user {current_user.id}")
+            raise HTTPException(status_code=500, detail="Failed to fetch calendar events")
+        
+        # Format events for the frontend
+        formatted_events = []
+        for event in events:
+            formatted_event = {
+                "id": event["id"],
+                "type": "event",
+                "summary": event["summary"],
+                "start": event["start"],
+                "end": event["end"]
+            }
+            formatted_events.append(formatted_event)
+        
+        logger.info(f"Returning {len(formatted_events)} calendar events for user {current_user.id}")
+        return {
+            "message": "Successfully retrieved calendar events.",
+            "events": formatted_events
+        }
+    
+    except Exception as e:
+        logger.error(f"Error fetching calendar events for user {current_user.id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error fetching calendar events: {str(e)}")
+
 # --- Root Endpoint --- 
 @app.get("/")
 async def read_root():

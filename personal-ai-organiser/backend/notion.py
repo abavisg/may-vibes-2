@@ -72,7 +72,7 @@ async def get_notion_tasks():
             sorts=db_sorts if db_sorts else [] # Pass an empty list if db_sorts is empty, not None
         )
 
-        logger.info(f"Notion response: {response}")
+        #logger.info(f"Notion response: {response}")
 
         tasks = []
         results = response.get("results", [])
