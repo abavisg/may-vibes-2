@@ -64,12 +64,22 @@ The Personal AI Organiser is a web application designed to help users manage the
    cd backend
    ```
 
-2. Start the backend server:
+2. Activate the virtual environment:
+   - On macOS/Linux:
+     ```bash
+     source venv/bin/activate
+     ```
+   - On Windows:
+     ```bash
+     .\venv\Scripts\activate
+     ```
+
+3. Start the backend server using Uvicorn:
    ```bash
-   python main.py  # Adjust this command based on your entry point
+   uvicorn main:app --reload --port 8000
    ```
 
-3. Ensure the backend is running on the expected port (default is usually 5000).
+4. Ensure the backend is running on the expected port (default is usually 8000).
 
 ### Debugging Tips
 - **Frontend Debugging**: Use the browser's developer tools (F12) to inspect elements, view console logs, and debug JavaScript errors.
