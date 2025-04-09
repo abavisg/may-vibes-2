@@ -30,10 +30,8 @@ const TaskListView: React.FC = () => {
   };
 
   const formatDuration = (minutes: number | null | undefined): string => {
-    console.log("minutes:", minutes);
     if (!minutes) return 'No duration';
-    
-    return `${minutes}m`;
+    return `${minutes} minutes`;
   };
 
   if (isLoading) {
@@ -46,35 +44,23 @@ const TaskListView: React.FC = () => {
 
   return (
     <div className="task-container">
-      <h2 className="text-xl font-semibold mb-4">Tasks</h2>
       {notionTasks.length === 0 ? (
         <p className="text-gray-500 dark:text-gray-400 text-center py-4">No tasks found.</p>
       ) : (
         <ul className="task-list">
           {notionTasks.map((task) => (
-            <li key={task.id} className="task-item">
-              <div className="task-item-content">
-                <div className="flex items-center justify-between">
-                  <a 
-                    href={task.url || '#'} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="task-title-link"
-                  >
-                    {task.title}
-                  </a>
-                  <div className="flex items-center space-x-2">
-                    <span className={`item-priority priority-${getPriorityColor(task.priority)}`}>
-                      {task.priority}
-                    </span>
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
-                      {
-                        checkDuration(task)
-                      }
-                    </span>
-                  </div>
-                </div>
-              </div>
+            <li key={task.id} className="task-item py-1">
+              <a 
+                href={task.url || '#'} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="task-title-link hover:underline"
+              >
+                {task.title}
+              </a>
+              <span className="text-gray-600 dark:text-gray-400">
+                {task.priority ? ` (${task.priority})` : ''}: {formatDuration(task.duration)}
+              </span>
             </li>
           ))}
         </ul>
