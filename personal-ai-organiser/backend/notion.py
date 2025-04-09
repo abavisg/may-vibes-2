@@ -91,7 +91,7 @@ async def get_notion_tasks():
             # Deadline Property ('date' type)
             deadline_prop = properties.get("With") # <-- ADJUST PROPERTY NAME
             # Estimate Property ('number' type, e.g., hours)
-            estimate_prop = properties.get("Time (h)") # <-- ADJUST PROPERTY NAME
+            duration_prop = properties.get("Duration") # <-- ADJUST PROPERTY NAME
             # --- End of properties to adjust ---
 
             # Extract title safely
@@ -130,19 +130,20 @@ async def get_notion_tasks():
 
             # Extract estimate safely (assuming 'number' type)
             estimate = None
-            if estimate_prop and estimate_prop.get("type") == "number":
-                estimate = estimate_prop.get("number")
+            if duration_prop and duration_prop.get("type") == "number":
+                estimate = duration_prop.get("number")
 
-
+            
             task_data = {
                 "id": page.get("id"),
                 "title": task_name,
                 "status": status,
                 "priority": priority,
                 "deadline": deadline.isoformat() if deadline else None,
-                "estimate_hours": estimate,
+                "duration": estimate,
                 "url": page.get("url")
             }
+            logger.info(f"Task data: {task_data}")
             tasks.append(task_data)
             # logger.debug(f"Processed task: {task_data}") # Use debug level for noisy logs
 
@@ -173,7 +174,7 @@ async def get_notion_tasks():
 #             print(f"   Status: {task['status']}")
 #             print(f"   Priority: {task['priority']}")
 #             print(f"   Deadline: {task['deadline']}")
-#             print(f"   Estimate (h): {task['estimate_hours']}")
+#             print(f"   Estimate (h): {task['duration']}")
 #             print(f"   URL: {task['url']}")
 #             print("-" * 10)
 #     else:

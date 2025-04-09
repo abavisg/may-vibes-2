@@ -12,7 +12,7 @@ export interface PlanItem {
   id: string; // Event or Task ID
   // Add other potential fields from your plan data (priority, estimate, etc.)
   priority?: string | null;
-  estimate_hours?: number | null;
+  duration?: number | null;
   deadline?: string | null; // ISO date string
   url?: string | null; // e.g., Notion URL
   [key: string]: any; // Allow other properties

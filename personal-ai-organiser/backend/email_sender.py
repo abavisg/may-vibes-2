@@ -77,7 +77,7 @@ def format_plan_for_email(plan: list) -> str:
             if item_type == 'task':
                 details = []
                 if item.get('priority'): details.append(f"Priority: {item['priority']}")
-                if item.get('estimate_hours'): details.append(f"Est: {item['estimate_hours']}h")
+                if item.get('duration'): details.append(f"Est: {item['duration']}h")
                 if item.get('deadline'): details.append(f"Deadline: {item['deadline']}")
                 if details:
                     html_body += f'<div class="details">{' | '.join(details)}</div>'

@@ -1,6 +1,7 @@
 import React from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
+import './Timeline.css';
 
 // TODO: Fetch and display tasks from Notion
 
@@ -8,34 +9,72 @@ const TaskListView: React.FC = () => {
   const { isAuthenticated } = useAuth();
   const { notionTasks, isLoading, error } = useData();
 
+  const getPriorityColor = (priority: string | null | undefined): string => {
+    if (!priority) return 'low';
+    
+    switch (priority.toLowerCase()) {
+      case 'high':
+        return 'high';
+      case 'medium':
+        return 'medium';
+      case 'low':
+        return 'low';
+      default:
+        return 'low';
+    }
+  };
+
+  const checkDuration = (task: any): string => {
+    console.log("task:", task);
+    return task.duration ? formatDuration(task.duration) :'No duration'
+  };
+
+  const formatDuration = (minutes: number | null | undefined): string => {
+    console.log("minutes:", minutes);
+    if (!minutes) return 'No duration';
+    
+    return `${minutes}m`;
+  };
+
+  if (isLoading) {
+    return <div className="task-loading">Loading tasks...</div>;
+  }
+
+  if (error) {
+    return <div className="task-error">{error}</div>;
+  }
+
   return (
-    <div>
-      {isLoading && <p className="text-gray-600 dark:text-gray-400">Loading tasks...</p>}
-      {error && <p className="text-red-500">{error}</p>}
-      {!isLoading && !error && notionTasks.length === 0 && (
-        <p className="text-gray-600 dark:text-gray-400">No tasks found in Notion.</p>
-      )}
-      {!isLoading && !error && notionTasks.length > 0 && (
-        <ul className="space-y-2">
+    <div className="task-container">
+      <h2 className="text-xl font-semibold mb-4">Tasks</h2>
+      {notionTasks.length === 0 ? (
+        <p className="text-gray-500 dark:text-gray-400 text-center py-4">No tasks found.</p>
+      ) : (
+        <ul className="task-list">
           {notionTasks.map((task) => (
-            <li key={task.id} className="p-2 border rounded bg-yellow-50 dark:bg-yellow-900/50 border-yellow-200 dark:border-yellow-700">
-              <p className="font-medium text-yellow-800 dark:text-yellow-200">{task.title || 'Untitled Task'}</p>
-              {/* Display Task Details */}
-              <div className="text-sm text-gray-600 dark:text-gray-400 mt-1 space-x-2">
-                {task.priority && <span>Prio: {task.priority}</span>}
-                {task.estimate_hours && <span>Est: {task.estimate_hours}h</span>}
-                {task.deadline && <span>Due: {task.deadline}</span>}
+            <li key={task.id} className="task-item">
+              <div className="task-item-content">
+                <div className="flex items-center justify-between">
+                  <a 
+                    href={task.url || '#'} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="task-title-link"
+                  >
+                    {task.title}
+                  </a>
+                  <div className="flex items-center space-x-2">
+                    <span className={`item-priority priority-${getPriorityColor(task.priority)}`}>
+                      {task.priority}
+                    </span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                      {
+                        checkDuration(task)
+                      }
+                    </span>
+                  </div>
+                </div>
               </div>
-               {task.url && 
-                <a 
-                  href={task.url} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-xs text-blue-600 hover:underline dark:text-blue-400"
-                >
-                  View in Notion
-                </a>
-              }
             </li>
           ))}
         </ul>

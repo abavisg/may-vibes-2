@@ -1,6 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
+import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
+import './Timeline.css';
+
+// Define the shape of a timeline item
+interface TimelineItem {
+  id: string;
+  type: 'event' | 'task';
+  summary?: string;
+  title?: string;
+  start: string | null;
+  end: string | null;
+  priority?: string | null;
+  estimate_minutes?: number | null;
+  deadline?: string | null;
+  url?: string | null;
+}
 
 // TODO: Fetch combined calendar events and scheduled tasks
 // TODO: Implement timeline view (e.g., hourly slots)
@@ -9,22 +25,112 @@ import { useData } from '../context/DataContext';
 const TimelineView: React.FC = () => {
   const { isAuthenticated } = useAuth();
   const { calendarEvents, notionTasks, isLoading, error } = useData();
-  const [items, setItems] = useState<any[]>([]);
+  const [timeSlots, setTimeSlots] = useState<string[]>([]);
+  const [itemsByTimeSlot, setItemsByTimeSlot] = useState<Record<string, TimelineItem[]>>({});
 
-  // Combine and sort items whenever calendarEvents or notionTasks change
+  // Generate time slots for working hours (9-5)
   useEffect(() => {
-    if (calendarEvents.length > 0 || notionTasks.length > 0) {
-      // Combine and sort all items by start time
-      const allItems = [...calendarEvents, ...notionTasks].sort((a, b) => {
-        const timeA = a.start ? new Date(a.start).getTime() : 0;
-        const timeB = b.start ? new Date(b.start).getTime() : 0;
-        return timeA - timeB;
-      });
-      
-      console.log(`Combined ${calendarEvents.length} calendar events and ${notionTasks.length} Notion tasks for timeline`);
-      setItems(allItems);
+    const slots: string[] = [];
+    for (let i = 9; i <= 17; i++) {
+      const hour = i.toString().padStart(2, '0');
+      slots.push(`${hour}:00`);
     }
-  }, [calendarEvents, notionTasks]);
+    setTimeSlots(slots);
+  }, []);
+
+  // Process calendar events and tasks
+  useEffect(() => {
+    if (timeSlots.length === 0) return;
+
+    // Initialize empty slots
+    const newItemsBySlot: Record<string, TimelineItem[]> = {};
+    timeSlots.forEach(slot => {
+      newItemsBySlot[slot] = [];
+    });
+
+    // Process calendar events
+    calendarEvents.forEach(event => {
+      if (event.start) {
+        const itemHour = new Date(event.start).getHours();
+        const slotHour = itemHour.toString().padStart(2, '0');
+        const slotKey = `${slotHour}:00`;
+        
+        if (newItemsBySlot[slotKey]) {
+          newItemsBySlot[slotKey].push({
+            ...event,
+            type: 'event' as const,
+            id: `event-${event.id || Math.random().toString(36).substring(2, 15)}`,
+          });
+        }
+      }
+    });
+
+    // Process Notion tasks
+    notionTasks.forEach(task => {
+      const estimatedMinutes = task.estimate_minutes || 30; // Default to 30 minutes if not specified
+      const estimatedHours = estimatedMinutes / 60; // Convert to hours for slot calculation
+      
+      // Find first available slot
+      let placed = false;
+      for (let i = 0; i < timeSlots.length; i++) {
+        const slotKey = timeSlots[i];
+        
+        // Check if this slot and next slots are available
+        let canPlace = true;
+        for (let j = 0; j < estimatedHours; j++) {
+          const checkIndex = i + j;
+          if (checkIndex >= timeSlots.length || newItemsBySlot[timeSlots[checkIndex]].length > 0) {
+            canPlace = false;
+            break;
+          }
+        }
+        
+        if (canPlace) {
+          // Place task in this slot
+          const taskWithTime = {
+            ...task,
+            type: 'task' as const,
+            id: `task-${task.id || Math.random().toString(36).substring(2, 15)}`,
+            start: new Date(new Date().setHours(parseInt(slotKey.split(':')[0]), 0, 0, 0)).toISOString(),
+            end: new Date(new Date().setHours(parseInt(slotKey.split(':')[0]), estimatedMinutes, 0, 0)).toISOString(),
+          };
+          
+          newItemsBySlot[slotKey].push(taskWithTime);
+          
+          // Mark next slots as occupied if task spans multiple hours
+          for (let j = 1; j < estimatedHours; j++) {
+            const nextSlotKey = timeSlots[i + j];
+            newItemsBySlot[nextSlotKey].push({
+              id: `placeholder-${taskWithTime.id}-${j}`,
+              type: 'task' as const,
+              title: `(Continued) ${task.title}`,
+              start: null,
+              end: null,
+            });
+          }
+          
+          placed = true;
+          break;
+        }
+      }
+      
+      // If no slot available, place at end of day
+      if (!placed && timeSlots.length > 0) {
+        const lastSlot = timeSlots[timeSlots.length - 1];
+        const taskWithTime = {
+          ...task,
+          type: 'task' as const,
+          id: `task-${task.id || Math.random().toString(36).substring(2, 15)}`,
+          start: new Date(new Date().setHours(parseInt(lastSlot.split(':')[0]), 0, 0, 0)).toISOString(),
+          end: new Date(new Date().setHours(parseInt(lastSlot.split(':')[0]), estimatedMinutes, 0, 0)).toISOString(),
+        };
+        
+        newItemsBySlot[lastSlot].push(taskWithTime);
+      }
+    });
+
+    setItemsByTimeSlot(newItemsBySlot);
+  }, [calendarEvents, notionTasks, timeSlots]);
 
   const formatTime = (isoString: string | null): string => {
     if (!isoString) return "Time N/A";
@@ -33,44 +139,118 @@ const TimelineView: React.FC = () => {
     } catch { return "Invalid Date"; }
   };
 
+  const formatTimeRange = (start: string | null, end: string | null): string => {
+    if (!start || !end) return "Time N/A";
+    try {
+      const startTime = new Date(start).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+      const endTime = new Date(end).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+      return `${startTime}–${endTime}`;
+    } catch { return "Invalid Time Range"; }
+  };
+
+  const handleDragEnd = (result: any) => {
+    if (!result.destination) return;
+
+    const { source, destination } = result;
+    
+    // If dropped in the same position, do nothing
+    if (
+      source.droppableId === destination.droppableId &&
+      source.index === destination.index
+    ) {
+      return;
+    }
+
+    // Create a copy of the items by time slot
+    const newItemsByTimeSlot = { ...itemsByTimeSlot };
+    
+    // Get the source and destination arrays
+    const sourceItems = [...newItemsByTimeSlot[source.droppableId]];
+    const destItems = source.droppableId === destination.droppableId 
+      ? sourceItems 
+      : [...newItemsByTimeSlot[destination.droppableId]];
+    
+    // Remove the dragged item from its original position
+    const [removed] = sourceItems.splice(source.index, 1);
+    
+    // Insert the dragged item at its new position
+    destItems.splice(destination.index, 0, removed);
+    
+    // Update the state with the new order
+    newItemsByTimeSlot[source.droppableId] = sourceItems;
+    newItemsByTimeSlot[destination.droppableId] = destItems;
+    
+    setItemsByTimeSlot(newItemsByTimeSlot);
+  };
+
+  if (isLoading) {
+    return <div className="timeline-loading">Loading timeline...</div>;
+  }
+
+  if (error) {
+    return <div className="timeline-error">{error}</div>;
+  }
+
+  // Check if there are any items to display
+  const hasItems = Object.values(itemsByTimeSlot).some(slot => slot.length > 0);
+
   return (
-    <div>
-      {isLoading && <p className="text-gray-600 dark:text-gray-400">Loading timeline...</p>}
-      {error && <p className="text-red-500">{error}</p>}
-      {!isLoading && !error && items.length === 0 && (
-        <p className="text-gray-600 dark:text-gray-400">No items found for today.</p>
+    <div className="timeline-container">
+      {!hasItems ? (
+        <p className="text-gray-500 dark:text-gray-400 text-center py-4">No items found for today.</p>
+      ) : (
+        <DragDropContext onDragEnd={handleDragEnd}>
+          <div className="timeline">
+            {timeSlots.map((timeSlot, index) => {
+              const nextTimeSlot = index < timeSlots.length - 1 ? timeSlots[index + 1] : null;
+              const currentHour = parseInt(timeSlot.split(':')[0]);
+              const nextHour = nextTimeSlot ? parseInt(nextTimeSlot.split(':')[0]) : currentHour + 1;
+              
+              return (
+                <div key={timeSlot} className="time-slot">
+                  <div className="time-label">{formatTimeRange(
+                    new Date().setHours(currentHour, 0, 0, 0).toString(),
+                    new Date().setHours(nextHour, 0, 0, 0).toString()
+                  )}</div>
+                  <Droppable droppableId={timeSlot}>
+                    {(provided) => (
+                      <div
+                        ref={provided.innerRef}
+                        {...provided.droppableProps}
+                        className="droppable-area"
+                      >
+                        {itemsByTimeSlot[timeSlot]?.map((item, index) => (
+                          <Draggable key={item.id} draggableId={item.id} index={index}>
+                            {(provided, snapshot) => (
+                              <div
+                                ref={provided.innerRef}
+                                {...provided.draggableProps}
+                                {...provided.dragHandleProps}
+                                className={`timeline-item ${item.type === 'event' ? 'event-item' : 'task-item'} ${snapshot.isDragging ? 'dragging' : ''}`}
+                              >
+                                <div className="item-content">
+                                  <span className="item-type">
+                                    {item.type === 'event' ? '(calendar)' : '(task)'}
+                                  </span>
+                                  <div className="timeline-item-content">
+                                    <div className="timeline-item-title">{item.summary || item.title}</div>
+                                    <div className="timeline-item-duration">{formatTimeRange(item.start, item.end)}</div>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </Draggable>
+                        ))}
+                        {provided.placeholder}
+                      </div>
+                    )}
+                  </Droppable>
+                </div>
+              );
+            })}
+          </div>
+        </DragDropContext>
       )}
-      {!isLoading && !error && items.length > 0 && (
-        <ul className="space-y-2">
-          {items.map((item) => (
-            <li 
-              key={item.id} 
-              className={`p-2 border rounded ${
-                item.type === 'event' 
-                  ? 'bg-blue-50 dark:bg-blue-900/50 border-blue-200 dark:border-blue-700' 
-                  : 'bg-green-50 dark:bg-green-900/50 border-green-200 dark:border-green-700'
-              }`}
-            >
-              <p className={`font-medium ${
-                item.type === 'event' 
-                  ? 'text-blue-800 dark:text-blue-200' 
-                  : 'text-green-800 dark:text-green-200'
-              }`}>
-                {item.summary || item.title || 'No Title'}
-              </p>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                {formatTime(item.start)} - {formatTime(item.end)}
-              </p>
-              {item.type === 'task' && item.priority && (
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Priority: {item.priority}
-                </p>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
-       {/* TODO: Add drag-and-drop functionality here eventually */} 
     </div>
   );
 };

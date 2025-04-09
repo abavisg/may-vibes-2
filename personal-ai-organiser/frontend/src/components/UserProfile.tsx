@@ -1,28 +1,37 @@
 import React from 'react';
 import { useAuth } from '../context/AuthContext';
-import LogoutButton from './LogoutButton';
+import LoginButton from './LoginButton';
 
 const UserProfile: React.FC = () => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
 
   if (!user) {
-    return null; // Or a loading indicator/placeholder
+    return <LoginButton />;
   }
 
   return (
-    <div className="flex items-center space-x-4 p-2 bg-gray-200 dark:bg-gray-700 rounded-lg">
+    <div className="sticky top-4 right-4 z-50 flex items-center justify-end space-x-2 bg-white dark:bg-gray-800 rounded-lg shadow-md p-2 ml-auto">
       {user.picture && (
         <img 
           src={user.picture} 
-          alt={user.name || 'User avatar'} 
-          className="w-10 h-10 rounded-full"
+          alt={user.name || 'User'} 
+          className="w-8 h-8 rounded-full"
         />
       )}
-      <div className="text-sm">
-        <div className="font-medium text-gray-900 dark:text-white">{user.name || 'User'}</div>
-        <div className="text-gray-600 dark:text-gray-400">{user.email}</div>
+      <div className="text-right">
+        <p className="text-xs font-medium text-gray-800 dark:text-gray-200 truncate max-w-[120px]">
+          {user.name || 'User'}
+        </p>
+        <p className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[120px]">
+          {user.email}
+        </p>
       </div>
-      <LogoutButton />
+      <button
+        onClick={logout}
+        className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 rounded transition-colors"
+      >
+        Logout
+      </button>
     </div>
   );
 };

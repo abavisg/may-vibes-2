@@ -1,0 +1,308 @@
+/* Base styles */
+.timeline-container,
+.calendar-container,
+.task-list-container {
+  @apply bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4;
+}
+
+/* Timeline specific styles */
+.timeline-container {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.timeline {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.time-slot {
+  display: flex;
+  border-bottom: 1px solid #e2e8f0;
+  min-height: 3rem;
+}
+
+.time-slot:last-child {
+  border-bottom: none;
+}
+
+.time-label {
+  width: 150px;
+  padding: 0.75rem 1rem;
+  background-color: #f7fafc;
+  font-weight: 500;
+  border-right: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.droppable-area {
+  flex: 1;
+  padding: 0.5rem;
+  min-height: 3rem;
+  background-color: white;
+}
+
+.timeline-item {
+  padding: 0.5rem;
+  margin-bottom: 0.5rem;
+  border-radius: 0.25rem;
+  cursor: grab;
+  transition: all 0.2s ease;
+}
+
+.timeline-item:last-child {
+  margin-bottom: 0;
+}
+
+.timeline-item.dragging {
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  opacity: 0.8;
+}
+
+.event-item {
+  background-color: #ebf8ff;
+  border-left: 3px solid #4299e1;
+}
+
+.task-item {
+  background-color: #f0fff4;
+  border-left: 3px solid #48bb78;
+}
+
+.item-content {
+  display: flex;
+  align-items: center;
+}
+
+.item-type {
+  font-size: 0.75rem;
+  color: #718096;
+  margin-right: 0.5rem;
+}
+
+.item-title {
+  font-weight: 500;
+}
+
+.item-time {
+  @apply text-xs text-gray-500 dark:text-gray-400;
+}
+
+.item-priority {
+  @apply text-xs font-medium px-1.5 py-0.5 rounded-full inline-block w-fit;
+}
+
+.priority-high {
+  @apply bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200;
+}
+
+.priority-medium {
+  @apply bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-200;
+}
+
+.priority-low {
+  @apply bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200;
+}
+
+/* Calendar styles */
+.calendar-container {
+  width: 100%;
+}
+
+.calendar-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.calendar-item {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.calendar-item:last-child {
+  border-bottom: none;
+}
+
+.calendar-item-content {
+  display: flex;
+  align-items: center;
+}
+
+.calendar-time {
+  font-weight: 500;
+  min-width: 60px;
+  color: #4a5568;
+}
+
+.calendar-summary {
+  margin-left: 0.5rem;
+}
+
+/* Task list styles */
+.task-container {
+  width: 100%;
+}
+
+.task-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.task-item {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.task-item:last-child {
+  border-bottom: none;
+}
+
+.task-item-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.task-title {
+  font-weight: 500;
+}
+
+.task-duration {
+  font-size: 0.75rem;
+  color: #666;
+}
+
+.task-title-link {
+  color: #3182ce;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+
+.task-title-link:hover {
+  color: #2c5282;
+  text-decoration: underline;
+}
+
+.timeline-loading, .timeline-error, .calendar-loading, .calendar-error, .task-loading, .task-error {
+  padding: 1rem;
+  text-align: center;
+  color: #718096;
+}
+
+.timeline-error, .calendar-error, .task-error {
+  color: #e53e3e;
+}
+
+/* Dark mode styles */
+@media (prefers-color-scheme: dark) {
+  .timeline {
+    border-color: #4a5568;
+  }
+  
+  .time-slot {
+    border-bottom-color: #4a5568;
+  }
+  
+  .time-label {
+    background-color: #2d3748;
+    border-right-color: #4a5568;
+    color: #e2e8f0;
+  }
+  
+  .droppable-area {
+    background-color: #1a202c;
+  }
+  
+  .event-item {
+    background-color: #2c5282;
+    border-left-color: #63b3ed;
+  }
+  
+  .task-item {
+    background-color: #276749;
+    border-left-color: #68d391;
+  }
+  
+  .item-type {
+    color: #a0aec0;
+  }
+  
+  .item-title {
+    color: #f7fafc;
+  }
+  
+  .calendar-item, .task-item {
+    border-bottom-color: #4a5568;
+  }
+  
+  .calendar-time {
+    color: #a0aec0;
+  }
+  
+  .calendar-summary, .task-title {
+    color: #f7fafc;
+  }
+  
+  .task-duration {
+    color: #888;
+  }
+  
+  .timeline-loading, .timeline-error, .calendar-loading, .calendar-error, .task-loading, .task-error {
+    color: #a0aec0;
+  }
+  
+  .timeline-error, .calendar-error, .task-error {
+    color: #fc8181;
+  }
+  
+  .task-title-link {
+    color: #63b3ed;
+  }
+  
+  .task-title-link:hover {
+    color: #90cdf4;
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .time-label {
+    width: 100px;
+    font-size: 0.875rem;
+  }
+  
+  .calendar-time {
+    min-width: 50px;
+    font-size: 0.875rem;
+  }
+}
+
+.timeline-item-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.timeline-item-title {
+  font-weight: 500;
+}
+
+.timeline-item-duration {
+  font-size: 0.75rem;
+  color: #666;
+}
+
+@media (prefers-color-scheme: dark) {
+  .timeline-item-duration {
+    color: #888;
+  }
+} 

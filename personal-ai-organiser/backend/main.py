@@ -415,7 +415,7 @@ async def get_notion_tasks_endpoint(current_user: User = Depends(require_current
                 "type": "task",
                 "title": task["title"],
                 "priority": task["priority"],
-                "estimate_hours": task["estimate_hours"],
+                "duration": task["duration"],
                 "deadline": task["deadline"],
                 "url": task["url"],
                 "start": None,  # Tasks don't have a start time by default

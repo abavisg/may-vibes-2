@@ -151,8 +151,8 @@ def prioritize_tasks(tasks: list, today: date) -> list:
     prioritized = []
     for task in tasks:
         # Skip tasks without an estimated duration
-        estimate_hours = task.get('estimate_hours')
-        if estimate_hours is None or estimate_hours <= 0:
+        duration = task.get('duration')
+        if duration is None or duration <= 0:
             logger.debug(f"Skipping task '{task.get('title')}' - no valid estimate.")
             continue
             
@@ -195,7 +195,7 @@ def schedule_tasks(tasks: list, free_slots: list[tuple[datetime, datetime]]) -> 
     remaining_slots = free_slots[:] # Work with a copy
 
     for task in tasks:
-        task_duration_hours = task.get('estimate_hours', 0)
+        task_duration_hours = task.get('duration', 0)
         if task_duration_hours <= 0:
             continue # Should have been filtered by prioritize_tasks, but safety check
         
