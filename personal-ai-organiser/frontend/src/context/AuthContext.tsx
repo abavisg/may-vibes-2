@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
+import React, { createContext, useState, useContext, ReactNode, useEffect, useRef } from 'react';
 import apiClient from './apiClient';
 
 // Define the shape of the user object
@@ -37,6 +37,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
+  
+  // Use a ref to track if we've already logged the API call in this session
+  const hasLoggedApiCall = useRef<boolean>(false);
 
   // Function to get cached user data
   const getCachedUserData = (): { user: User | null, timestamp: number } | null => {
@@ -81,7 +84,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const response = await apiClient.get<User>('/user/me');
       if (response.status === 200 && response.data) {
-        console.log("User data fetched from API:", response.data);
+        // Only log once per session to avoid duplicate logs in StrictMode
+        if (!hasLoggedApiCall.current) {
+          console.log("User data fetched from API:", response.data);
+          hasLoggedApiCall.current = true;
+        }
         return response.data;
       }
     } catch (err) {
@@ -94,6 +101,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const refreshUserData = async (): Promise<void> => {
     setIsLoading(true);
     try {
+      // Reset the logging flag when manually refreshing
+      hasLoggedApiCall.current = false;
       const userData = await fetchUserData();
       if (userData) {
         setIsAuthenticated(true);
@@ -121,7 +130,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (isCacheValid()) {
           const cachedData = getCachedUserData();
           if (cachedData && cachedData.user) {
-            console.log("Using cached user data:", cachedData.user);
+            // Only log once per session to avoid duplicate logs in StrictMode
+            if (!hasLoggedApiCall.current) {
+              console.log("Using cached user data:", cachedData.user);
+              hasLoggedApiCall.current = true;
+            }
             setIsAuthenticated(true);
             setUser(cachedData.user);
             setIsLoading(false);
@@ -165,6 +178,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setIsAuthenticated(false);
       setUser(null);
       setCachedUserData(null); // Clear cache on logout
+      // Reset the logging flag on logout
+      hasLoggedApiCall.current = false;
     } catch (err) {
       console.error("Logout failed:", err);
       setError("Failed to logout. Please try again.");
