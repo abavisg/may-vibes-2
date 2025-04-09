@@ -1,53 +1,23 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useAuth } from '../context/AuthContext';
-import { PlanItem } from '../context/AuthContext'; // Import PlanItem type
-import apiClient from '../context/apiClient';
+import { useData } from '../context/DataContext';
 
 // TODO: Fetch and display tasks from Notion
 
 const TaskListView: React.FC = () => {
   const { isAuthenticated } = useAuth();
-  const [tasks, setTasks] = useState<PlanItem[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const loadData = async () => {
-      if (!isAuthenticated) return; 
-      
-      setIsLoading(true);
-      setError(null);
-      try {
-        // Fetch tasks directly from the Notion endpoint
-        const response = await apiClient.get('/notion/tasks');
-        if (response.data && response.data.tasks) {
-          console.log(`Loaded ${response.data.tasks.length} Notion tasks directly from API`);
-          setTasks(response.data.tasks);
-        } else {
-          console.log("No Notion tasks available");
-          setTasks([]);
-        }
-      } catch (err) {
-        console.error("Failed to load Notion tasks:", err);
-        setError("Failed to load Notion tasks.");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadData();
-  }, [isAuthenticated]);
+  const { notionTasks, isLoading, error } = useData();
 
   return (
     <div>
       {isLoading && <p className="text-gray-600 dark:text-gray-400">Loading tasks...</p>}
       {error && <p className="text-red-500">{error}</p>}
-      {!isLoading && !error && tasks.length === 0 && (
+      {!isLoading && !error && notionTasks.length === 0 && (
         <p className="text-gray-600 dark:text-gray-400">No tasks found in Notion.</p>
       )}
-      {!isLoading && !error && tasks.length > 0 && (
+      {!isLoading && !error && notionTasks.length > 0 && (
         <ul className="space-y-2">
-          {tasks.map((task) => (
+          {notionTasks.map((task) => (
             <li key={task.id} className="p-2 border rounded bg-yellow-50 dark:bg-yellow-900/50 border-yellow-200 dark:border-yellow-700">
               <p className="font-medium text-yellow-800 dark:text-yellow-200">{task.title || 'Untitled Task'}</p>
               {/* Display Task Details */}

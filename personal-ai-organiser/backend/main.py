@@ -79,13 +79,13 @@ app.add_middleware(SessionMiddleware, secret_key=SESSION_SECRET_KEY)
 @app.on_event("startup")
 async def startup_event():
     logger.info("Starting up FastAPI application...")
-    create_db_tables() # Create database tables if they don't exist
-    start_scheduler() # Start the background scheduler
+    #create_db_tables() # Create database tables if they don't exist
+    #start_scheduler() # Start the background scheduler
 
 @app.on_event("shutdown")
 def shutdown_event():
     logger.info("Shutting down FastAPI application...")
-    stop_scheduler() # Stop the background scheduler gracefully
+    #stop_scheduler() # Stop the background scheduler gracefully
 
 # --- Helper Function for OAuth Flow ---
 def get_google_flow() -> Flow:
@@ -436,7 +436,7 @@ async def get_notion_tasks_endpoint(current_user: User = Depends(require_current
 @app.get("/calendar/events")
 async def get_calendar_events_endpoint(current_user: User = Depends(require_current_user), db: Session = Depends(get_db)):
     """Fetches today's events from the user's Google Calendar."""
-    logger.info(f"Fetching calendar events for user {current_user.id}")
+    logger.info(f"2Fetching calendar events for user {current_user.id}")
     
     try:
         from .google_calendar import get_calendar_events

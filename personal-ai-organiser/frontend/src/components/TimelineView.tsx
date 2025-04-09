@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { PlanItem } from '../context/AuthContext'; // Import PlanItem type
-import apiClient from '../context/apiClient';
+import { useData } from '../context/DataContext';
 
 // TODO: Fetch combined calendar events and scheduled tasks
 // TODO: Implement timeline view (e.g., hourly slots)
@@ -9,46 +8,23 @@ import apiClient from '../context/apiClient';
 
 const TimelineView: React.FC = () => {
   const { isAuthenticated } = useAuth();
-  const [items, setItems] = useState<PlanItem[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { calendarEvents, notionTasks, isLoading, error } = useData();
+  const [items, setItems] = useState<any[]>([]);
 
+  // Combine and sort items whenever calendarEvents or notionTasks change
   useEffect(() => {
-    const loadData = async () => {
-      if (!isAuthenticated) return; // Don't fetch if not logged in
+    if (calendarEvents.length > 0 || notionTasks.length > 0) {
+      // Combine and sort all items by start time
+      const allItems = [...calendarEvents, ...notionTasks].sort((a, b) => {
+        const timeA = a.start ? new Date(a.start).getTime() : 0;
+        const timeB = b.start ? new Date(b.start).getTime() : 0;
+        return timeA - timeB;
+      });
       
-      setIsLoading(true);
-      setError(null);
-      try {
-        // Fetch both calendar events and Notion tasks in parallel
-        const [calendarResponse, notionResponse] = await Promise.all([
-          apiClient.get('/calendar/events'),
-          apiClient.get('/notion/tasks')
-        ]);
-
-        const calendarEvents = calendarResponse.data?.events || [];
-        const notionTasks = notionResponse.data?.tasks || [];
-
-        console.log(`Loaded ${calendarEvents.length} calendar events and ${notionTasks.length} Notion tasks directly from API`);
-        
-        // Combine and sort all items by start time
-        const allItems = [...calendarEvents, ...notionTasks].sort((a, b) => {
-          const timeA = a.start ? new Date(a.start).getTime() : 0;
-          const timeB = b.start ? new Date(b.start).getTime() : 0;
-          return timeA - timeB;
-        });
-
-        setItems(allItems);
-      } catch (err) {
-        console.error("Failed to load timeline items:", err);
-        setError("Failed to load timeline items.");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadData();
-  }, [isAuthenticated]); // Re-run if auth state changes
+      console.log(`Combined ${calendarEvents.length} calendar events and ${notionTasks.length} Notion tasks for timeline`);
+      setItems(allItems);
+    }
+  }, [calendarEvents, notionTasks]);
 
   const formatTime = (isoString: string | null): string => {
     if (!isoString) return "Time N/A";
