@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Determine the backend URL. Use environment variable if set, otherwise default.
 // Ensure you have VITE_BACKEND_URL=http://localhost:8000 in your frontend/.env file
-const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
+export const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
 
 // Create an axios instance
 const apiClient = axios.create({

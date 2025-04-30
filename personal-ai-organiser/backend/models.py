@@ -17,26 +17,21 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Get DB URL from environment
-DATABASE_URL = os.getenv("DATABASE_URL")
+# Get DB URL from environment or use SQLite by default
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./app.db")
+logger.info(f"Using database URL: {DATABASE_URL}")
 
-if not DATABASE_URL:
-    logger.error("DATABASE_URL not found in environment variables. Database connection cannot be established.")
-    # Depending on requirements, you might want to exit or raise an error
+try:
+    # connect_args only needed for SQLite, remove if using PostgreSQL
+    # For PostgreSQL, ensure DATABASE_URL is like: "postgresql://user:password@host:port/database"
+    connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
+    engine = create_engine(DATABASE_URL, connect_args=connect_args, echo=False) # Set echo=True for SQL logging
+    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    logger.info("Database engine and session configured successfully.")
+except Exception as e:
+    logger.error(f"Failed to create SQLAlchemy engine or session: {e}")
     engine = None
     SessionLocal = None
-else:
-    logger.info("DATABASE_URL found, configuring SQLAlchemy engine.")
-    try:
-        # connect_args only needed for SQLite, remove if using PostgreSQL
-        # For PostgreSQL, ensure DATABASE_URL is like: "postgresql://user:password@host:port/database"
-        connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
-        engine = create_engine(DATABASE_URL, connect_args=connect_args, echo=False) # Set echo=True for SQL logging
-        SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-    except Exception as e:
-        logger.error(f"Failed to create SQLAlchemy engine or session: {e}")
-        engine = None
-        SessionLocal = None
 
 # --- JSON Handling for SQLAlchemy ---
 # Define a type to handle JSON storage compatibly across DBs if needed,
@@ -107,9 +102,9 @@ class DailyPlan(Base):
     plan_date = Column(DateTime(timezone=True), nullable=False, index=True) # Use DateTime to store the date the plan is *for*
     generated_at = Column(DateTime(timezone=True), server_default=func.now())
     # Use native JSONB for PostgreSQL for better performance and querying
-    plan_data = Column(JSONB, nullable=False) 
+    # plan_data = Column(JSONB, nullable=False) 
     # If not using PostgreSQL, use the custom type:
-    # plan_data = Column(JSONEncodedDict, nullable=False)
+    plan_data = Column(JSONEncodedDict, nullable=False)
 
     # Relationship back to user
     user = relationship("User", back_populates="daily_plans")

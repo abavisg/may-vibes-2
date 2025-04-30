@@ -12,7 +12,7 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
 from sqlalchemy.orm import Session
-from .models import User, OAuthToken # Use relative import for models
+from models import User, OAuthToken # Use absolute import for models
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

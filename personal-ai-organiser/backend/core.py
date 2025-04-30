@@ -1,9 +1,9 @@
 # Placeholder for the core scheduling and planning logic
 
 # Use relative imports for sibling modules
-from .google_calendar import get_calendar_events
-from .notion import get_notion_tasks
-from .models import User, DailyPlan # Import DailyPlan
+from google_calendar import get_calendar_events
+from notion import get_notion_tasks
+from models import User, DailyPlan # Import DailyPlan
 
 import logging
 from datetime import datetime, time, timedelta, date

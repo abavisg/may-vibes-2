@@ -1,5 +1,6 @@
 import React, { createContext, useState, useContext, ReactNode, useEffect, useRef } from 'react';
 import apiClient from './apiClient';
+import { backendUrl } from './apiClient';
 
 // Define the shape of the user object
 export interface User {
@@ -168,7 +169,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Function to initiate login
   const login = () => {
-    window.location.href = '/auth/google';
+    window.location.href = `${backendUrl}/auth/google`;
   };
 
   // Function to logout

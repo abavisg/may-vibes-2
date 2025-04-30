@@ -18,11 +18,11 @@ import google.auth.transport.requests
 import googleapiclient.discovery
 import requests # To fetch user info
 
-# Import project modules using relative imports
-from .scheduler import start_scheduler, stop_scheduler, daily_planning_and_email_job
-from .core import generate_daily_plan
-from .models import SessionLocal, create_db_tables, get_db, User, OAuthToken, DailyPlan
-from .email_sender import send_daily_summary_email # Import email sender
+# Import project modules using absolute imports
+from scheduler import start_scheduler, stop_scheduler, daily_planning_and_email_job
+from core import generate_daily_plan
+from models import SessionLocal, create_db_tables, get_db, User, OAuthToken, DailyPlan
+from email_sender import send_daily_summary_email # Import email sender
 
 # --- Configuration & Setup ---
 load_dotenv()
@@ -42,7 +42,7 @@ if not all([GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI]):
 
 if not SESSION_SECRET_KEY:
     logger.warning("SESSION_SECRET_KEY not set! Using a default (INSECURE). Set a strong key in .env")
-    SESSION_SECRET_KEY = "a_default_insecure_secret_key_replace_me"
+    SESSION_SECRET_KEY = "a_default_insecure_secret_key_replace_me_with_something_more_secure_123456789"
 
 # Define OAuth Scopes (ensure these match what your app needs)
 # openid, email, profile are for basic user info
@@ -79,7 +79,7 @@ app.add_middleware(SessionMiddleware, secret_key=SESSION_SECRET_KEY)
 @app.on_event("startup")
 async def startup_event():
     logger.info("Starting up FastAPI application...")
-    #create_db_tables() # Create database tables if they don't exist
+   #create_db_tables() # Create database tables if they don't exist
     #start_scheduler() # Start the background scheduler
 
 @app.on_event("shutdown")
@@ -111,14 +111,18 @@ def get_google_flow() -> Flow:
 # --- Authentication Dependency --- 
 # (This should ideally be more robust, handling token validation/refresh if needed)
 async def get_current_user_optional(request: Request, db: Session = Depends(get_db)) -> User | None:
+    logger.info(f"[/user/me or other protected route] Checking session: {request.session}") # <<< ADD LOGGING
     user_id = request.session.get('user_id')
+    logger.info(f"[/user/me or other protected route] User ID from session: {user_id}") # <<< ADD LOGGING
     if not user_id:
         return None
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
          # Clear session if user_id is invalid
+         logger.warning(f"[/user/me or other protected route] User ID {user_id} found in session but not in DB. Clearing session.") # <<< ADD LOGGING
          request.session.clear()
          return None
+    logger.info(f"[/user/me or other protected route] Found valid user {user.id} ({user.email}) from session.") # <<< ADD LOGGING
     return user
 
 async def require_current_user(user: User | None = Depends(get_current_user_optional)) -> User:
@@ -400,7 +404,7 @@ async def get_notion_tasks_endpoint(current_user: User = Depends(require_current
     logger.info(f"Fetching Notion tasks for user {current_user.id}")
     
     try:
-        from .notion import get_notion_tasks
+        from notion import get_notion_tasks
         tasks = await get_notion_tasks()
         
         if tasks is None:
@@ -439,7 +443,7 @@ async def get_calendar_events_endpoint(current_user: User = Depends(require_curr
     logger.info(f"2Fetching calendar events for user {current_user.id}")
     
     try:
-        from .google_calendar import get_calendar_events
+        from google_calendar import get_calendar_events
         events = await get_calendar_events(user_id=current_user.id, db=db)
         
         if events is None:

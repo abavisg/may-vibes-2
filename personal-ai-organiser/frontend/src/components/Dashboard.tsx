@@ -5,6 +5,7 @@ import UserProfile from './UserProfile';
 import TimelineView from './TimelineView';
 import CalendarView from './CalendarView';
 import TaskListView from './TaskListView';
+import LoginButton from './LoginButton';
 import './Dashboard.css';
 
 const Dashboard: React.FC = () => {
@@ -36,7 +37,8 @@ const Dashboard: React.FC = () => {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <p className="text-gray-600 dark:text-gray-400">Please log in to view your dashboard.</p>
+          <p className="text-gray-600 dark:text-gray-400 mb-4">Please log in to view your dashboard.</p>
+          <LoginButton />
         </div>
       </div>
     );

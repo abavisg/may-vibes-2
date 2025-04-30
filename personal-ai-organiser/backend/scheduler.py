@@ -6,9 +6,9 @@ from apscheduler.triggers.cron import CronTrigger
 from sqlalchemy.orm import Session
 
 # Ensure imports point to the correct modules using relative paths
-from .core import generate_daily_plan
-from .email_sender import send_daily_summary_email
-from .models import SessionLocal, User # Import DB session and User model
+from core import generate_daily_plan
+from email_sender import send_daily_summary_email
+from models import SessionLocal, User # Import DB session and User model
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
