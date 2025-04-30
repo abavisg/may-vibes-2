@@ -1,9 +1,6 @@
-# personal-ai-organiser
-Personal AI Organiser
+# Personal AI Organiser
 
 A web application that helps users manage their tasks and calendar events efficiently by integrating with Notion and presenting everything in a visual timeline.
-
----
 
 ## Features
 
@@ -12,8 +9,6 @@ A web application that helps users manage their tasks and calendar events effici
 - **Smart Time Slots** – Rounds task start times to the nearest 15-minute interval.
 - **Drag-and-Drop UI** – (Optional) Reorder tasks interactively on the timeline.
 - **Visual Clarity** – Easily see task durations and gaps in your schedule.
-
----
 
 ## Tech stack
 
@@ -24,21 +19,16 @@ A web application that helps users manage their tasks and calendar events effici
 - CSS (styling)
 - FastAPI + Python (backend)
 
----
-
 ## Architecture
 
 - **Frontend**: Built with React and TypeScript, communicates with backend API, renders task+calendar timeline.
 - **Backend**: FastAPI server that pulls task data from Notion and formats it for frontend use.
 - **Data Flow**: Backend → Notion API → Formatted Tasks → Frontend Timeline View.
 
----
-
 ## API Endpoints
 
 [To be documented if needed, based on the backend FastAPI endpoints.]
 
----
 
 ## Setup the application
 
@@ -65,8 +55,6 @@ A web application that helps users manage their tasks and calendar events effici
    pip install -r requirements.txt
    ```
 
----
-
 ## Run the application
 
 ### Frontend
@@ -87,8 +75,6 @@ uvicorn main:app --reload --port 8000
 ```
 
 Backend should be available at `http://localhost:8000`
-
----
 
 ## License
 
